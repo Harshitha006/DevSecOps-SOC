@@ -12,10 +12,12 @@ from sqlalchemy.exc import IntegrityError
 try:
     from . import models, config
     from .utils.github_fetcher import fetch_commit_files
+    from .detectors.engine import scan_event
 except ImportError:
     import models
     import config
     from utils.github_fetcher import fetch_commit_files
+    from detectors.engine import scan_event
 
 # Configure structured logging
 logging.basicConfig(
@@ -125,7 +127,11 @@ async def github_webhook(request: Request, db: Session = Depends(get_db)):
     try:
         db.add(new_event)
         db.commit()
-        logger.info(f"Successfully inserted webhook event into database (ID: {delivery_id})")
+        logger.info(f"Successfully inserted webhook event into database (ID: {event_id})")
+        
+        # 🔥 Trigger detection engine
+        scan_event(new_event, db)
+        logger.info(f"Detection engine scan complete for event (ID: {event_id})")
     except IntegrityError as e:
         db.rollback()
         logger.warning(f"IntegrityError during database insert (possible duplicate race condition): {str(e)}")
@@ -143,6 +149,11 @@ async def github_webhook(request: Request, db: Session = Depends(get_db)):
 def get_events(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
     """Fetch recent webhook events with pagination."""
     return db.query(models.Event).order_by(models.Event.created_at.desc()).offset(skip).limit(limit).all()
+
+@app.get("/incidents")
+def get_incidents(db: Session = Depends(get_db)):
+    """Fetch all security incidents."""
+    return db.query(models.Incident).all()
 
 if __name__ == "__main__":
     import uvicorn

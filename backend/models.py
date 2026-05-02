@@ -18,3 +18,15 @@ class Event(Base):
 
     def __str__(self):
         return f"<Event(id={self.id}, event_type={self.event_type}, repo={self.repo}, branch={self.branch})>"
+
+class Incident(Base):
+    __tablename__ = "incidents"
+
+    id = Column(String, primary_key=True)
+    event_id = Column(String)
+    repo = Column(String)
+    file_path = Column(String)
+    rule_name = Column(String)
+    severity = Column(String)
+    match = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
