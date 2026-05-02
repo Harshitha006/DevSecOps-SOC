@@ -8,7 +8,7 @@ import logging
 from fastapi import FastAPI, Depends, Request, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-
+# API_KEY=1234567890
 try:
     from . import models, config
 except ImportError:
