@@ -11,9 +11,11 @@ from sqlalchemy.exc import IntegrityError
 # API_KEY=1234567890
 try:
     from . import models, config
+    from .utils.github_fetcher import fetch_commit_files
 except ImportError:
     import models
     import config
+    from utils.github_fetcher import fetch_commit_files
 
 # Configure structured logging
 logging.basicConfig(
@@ -91,34 +93,33 @@ async def github_webhook(request: Request, db: Session = Depends(get_db)):
         logger.info(f"Ignoring irrelevant event type: {event_type}")
         return {"status": "ignored"}
     
-    # Extract Repo
-    repo_obj = payload.get("repository", {})
-    repo = repo_obj.get("full_name") if isinstance(repo_obj, dict) else None
+    # Extract Repo, Branch, and SHA
+    repo = payload["repository"]["full_name"]
+    branch = payload["ref"].split("/")[-1]
+    sha = payload.get("after")
 
-    # Extract Branch (only if it starts with refs/heads/)
-    ref = payload.get("ref", "")
-    branch = ref.split("/")[-1] if ref.startswith("refs/heads/") else None
+    # 🔥 Fetch real file diffs
+    files = fetch_commit_files(repo, sha) if sha else []
 
-    logger.info(f"Event metadata - Type: {event_type}, Repo: {repo}, Branch: {branch}")
+    logger.info(f"Event metadata - Type: {event_type}, Repo: {repo}, Branch: {branch}, SHA: {sha}")
 
-    # 5. Replay Protection using Delivery ID
-    delivery_id = request.headers.get("X-GitHub-Delivery")
-    if not delivery_id:
-        delivery_id = str(uuid.uuid4())
-        logger.debug(f"No delivery ID found, generated fallback: {delivery_id}")
+    # 5. Replay Protection using SHA (as requested in Step 4)
+    # Note: User snippet uses id=sha
+    event_id = sha if sha else request.headers.get("X-GitHub-Delivery", str(uuid.uuid4()))
 
-    existing = db.query(models.Event).filter(models.Event.id == delivery_id).first()
+    existing = db.query(models.Event).filter(models.Event.id == event_id).first()
     if existing:
-        logger.info(f"Duplicate webhook ignored (Delivery ID: {delivery_id})")
+        logger.info(f"Duplicate webhook ignored (ID: {event_id})")
         return {"status": "duplicate"}
 
     # 6. Store in Database
     new_event = models.Event(
-        id=delivery_id,
+        id=event_id,
         event_type=event_type,
         raw_payload=payload,
         repo=repo,
-        branch=branch
+        branch=branch,
+        files=files
     )
 
     try:

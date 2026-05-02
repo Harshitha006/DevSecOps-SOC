@@ -14,6 +14,7 @@ class Event(Base):
     repo = Column(String)
     branch = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+    files = Column(JSON)   
 
     def __str__(self):
         return f"<Event(id={self.id}, event_type={self.event_type}, repo={self.repo}, branch={self.branch})>"
