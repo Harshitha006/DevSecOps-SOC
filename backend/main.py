@@ -10,14 +10,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 # API_KEY=1234567890
 try:
+    from backend import models, config
+    from backend.utils.github_fetcher import fetch_commit_files
+    from backend.detectors.engine import scan_event
+except ImportError:
     from . import models, config
     from .utils.github_fetcher import fetch_commit_files
     from .detectors.engine import scan_event
-except ImportError:
-    import models
-    import config
-    from utils.github_fetcher import fetch_commit_files
-    from detectors.engine import scan_event
 
 # Configure structured logging
 logging.basicConfig(

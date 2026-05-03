@@ -1,9 +1,9 @@
 from sqlalchemy import Column, String, JSON, DateTime
 from datetime import datetime
 try:
-    from .config import Base
+    from backend.config import Base
 except ImportError:
-    from config import Base
+    from .config import Base
 
 class Event(Base):
     __tablename__ = "events"

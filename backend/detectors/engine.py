@@ -2,12 +2,9 @@ import uuid
 import re
 from .rules import RULES
 try:
-    from .models import Incident
+    from backend.models import Incident
 except ImportError:
-    import sys
-    import os
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from models import Incident
+    from ..models import Incident
 
 
 def scan_event(event, db):
